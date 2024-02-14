@@ -5,7 +5,7 @@
 	"runOnSave.commands": [
 		{
 		"match": ".*\\.md$",
-		"command": "pandoc ${file} --resource-path=${fileDirname} -o ${fileDirname}/dubey_${fileBasenameNoExtension}.pdf",
+		"command": "pandoc ${file} --resource-path=${fileDirname} -o ${fileDirname}/${fileBasenameNoExtension}.pdf && pdfunite ${fileDirname}/ex*.pdf ${fileDirname}/dubey_${fileDirnameBasename}.pdf",
 		"runningStatusMessage": "Exporting ${fileBasename} to PDF...",
 		"finishStatusMessage": "${fileBasename} exported to PDF",
 		// "runIn": "backend",

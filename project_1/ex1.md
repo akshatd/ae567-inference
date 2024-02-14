@@ -18,7 +18,7 @@ $$
 
 where $\alpha = 3/2 = 1.5$.
 
-![Probability density function\label{f1}](f1.svg){width=300px}
+![Probability density function\label{1.1}](1.1.svg){width=300px}
 
 We can integrate this function from 1 to x to get the cumulative distribution function for $x \geq 1$, and any $x < 1$ will be 0. The CDF is:
 
@@ -28,7 +28,7 @@ F_X(x) = \left\{ \begin{array}{ll}
         0 & \mbox{if $x < 1$}\end{array} \right..
 $$
 
-![Cumulative Density function\label{f2}](f2.svg){width=300px}
+![Cumulative Density function\label{1.2}](1.2.svg){width=300px}
 
 $\pagebreak$
 
@@ -46,7 +46,7 @@ $$
 F_x^{-1}(x) = -\frac{1}{(x-1)^{1/\alpha}}
 $$
 
-![Inverse CDF: analytic vs numerical\label{f3}](f3.svg)
+![Inverse CDF: analytic vs numerical\label{1.3}](1.3.svg)
 
 Since both results match, we can now go ahead and use the inverse CDF to sample the distribution for use in Monte-Carlo simulations.
 
@@ -56,17 +56,17 @@ $\pagebreak$
 
 To generate a Monte Carlo estimate of the expectation of the distribution, we use $n$ samples of the distribution and take the average of these samples. To see how the distribution of the Monte Carlo estimate changes with $n$, we can plot the distribution of 500 repeated sequences of Monte Carlo estimate for various values of $n$.
 
-![Monte Caro sequences\label{f4}](f4.svg){width=350px}
+![Monte Caro sequences\label{1.4}](1.4.svg){width=350px}
 
 The distribution of the Monte Carlo estimate is a normal distribution with mean equal to the true expectation of the distribution and variance equal to the variance of the distribution divided by $n$. The distribution of the Monte Carlo estimates for various values of $n$ is shown in the following figure:
 
-![Distribution of the Monte Carlo estimate for various n's\label{f5}](f5.svg)
+![Distribution of the Monte Carlo estimate for various n's\label{1.5}](1.5.svg)
 
 We can observe that as $n$ increases, the distribution of the Monte Carlo estimate becomes more concentrated around the true expectation of the distribution. This is consistent with the fact that the variance of the Monte Carlo estimate decreases with $n$. This indeed seems like an asymptotic distribution since the frequency/probability of values drops off as we move away from the mean, approaching 0.
 
 To get a better idea of the convergence, we can plot the variance of the Monte Carlo estimate as a function of $n$.
 
-![Variance of the Monte Carlo estimate as a function of n\label{f6}](f6.svg)
+![Variance of the Monte Carlo estimate as a function of n\label{1.6}](1.6.svg)
 
 We observe that while the general trend follows $1/n$, there are multiple spikes in the variance througout the range of $n$. This is not expected, but can be explained by the asymptotic behavior of the sampler we have created, which approaches infinity as the sampling values get close to 1. If for a certain $S_n$, there happens to be a sample randomly generated that is close to 1, the value of $x$ will be extremely high, causing the variance to spike.
 
