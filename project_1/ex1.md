@@ -66,7 +66,7 @@ We can observe that as $n$ increases, the distribution of the Monte Carlo estima
 
 To get a better idea of the convergence, we can plot the variance of the Monte Carlo estimate as a function of $n$.
 
-![Variance of the Monte Carlo estimate as a function of n\label{1.6}](1.6.svg)
+![Variance of the Monte Carlo estimate as a function of n\label{1.6}](1.6.svg){width=400px}
 
 We observe that while the general trend follows $1/n$, there are multiple spikes in the variance througout the range of $n$. This is not expected, but can be explained by the asymptotic behavior of the sampler we have created, which approaches infinity as the sampling values get close to 1. If for a certain $S_n$, there happens to be a sample randomly generated that is close to 1, the value of $x$ will be extremely high, causing the variance to spike.
 
