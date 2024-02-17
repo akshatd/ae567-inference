@@ -45,11 +45,11 @@ $$
 p > 0.775
 $$
 
-So we can use a proposal distribution as a random walk with $\mathbb P(X_j = 1) = 0.8, \mathbb P(X_j = -1) = 0.2$ to get a better estimate for $S>55$. The Importance sampling estimate for $\mathbb P(S>55) = 7.966439961067404e-09$
+So we can use a proposal distribution as a random walk with $\mathbb P(X_j = 1) = 0.8, \mathbb P(X_j = -1) = 0.2$ to get a better estimate for $S>55$. The Importance sampling estimate for $\mathbb P(S>55) = 7.966439961067404e-09$.
 
 ### 2.1.d
 
-Analytical expression for the probability of the random walk exceeding 55 is a simple probability calculation for a Bernoulli distribution:
+Analytical expression for the probability of the random walk exceeding 55 is a simple probability calculation for a binomial distribution:
 
 $$
 \mathbb P(S>55) = \sum_{i=56}^{100} \mathbb P(S = i) \\
@@ -82,16 +82,18 @@ $$
 \mathbb P(S>55) = \sum_{i=56}^{100} {100 \choose \frac{i+100}{2}} 0.5^{100}
 $$
 
-Evaluating this expression gives us $\mathbb P(S>55) = 7.95266423689307e-09$, which is very close to the importance sampling estimate with a difference of only 0.17%
+Evaluating this expression gives us $\mathbb P(S>55) = 7.95266423689307e-09$, which is very close to the importance sampling estimate with a difference of only 0.17%.
+
+Interestingly, increasing the $\mathbb P(X_j = 1)$ too high in the prposal distribution closer to 0.9 actually causes the importance sampling estimate to become worse. This could be explained by the fact that the proposal distribution gets too far from the original distribution, and there isnt really any information left in the proposal distribution to calculate probabilities from. If we set this to 1, then the importance sampling estimate becomes 0, which is not correct. So it makes sense to keep it close to the original distribution at 0.8.
 
 ### 2.1.e.i
 
-For $\mathbb P(S>10)$, Monte Carlo estimate has:
+Standard errors:
 
-- Standard Error = 0.0003
-- 95% confidence interval = [0.1351, 0.1365]
+- Monte Carlo = 1.083489e-03
+- Importance Sampling = 6.003709e-11
 
-For $\mathbb P(S>55)$, Importance Sampling estimate has:
+95% confidence intervals:
 
-- Standard Error = $1.3775724174334172e-11$
-- 95% confidence interval = [7.952662858168636e-09, 7.952667064956504e-09]
+- Monte Carlo = [0.1337263621371712, 0.1379736378628288]
+- Importance Sampling = [7.848767266908999e-09, 8.084112655225919e-09]
