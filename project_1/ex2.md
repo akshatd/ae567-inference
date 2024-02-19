@@ -4,7 +4,7 @@ geometry: "margin=2cm"
 
 # AE567 Project 1 - Akshat Dubey
 
-## 2
+## 2 Warmup: life without a CLT
 
 ### Graphing the Pareto distribution function, its CDF and its inverse
 
