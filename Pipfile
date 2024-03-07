@@ -10,6 +10,7 @@ scipy = "*"
 matplotlib = "*"
 jupyter = "*"
 ipympl = "*"
+pandas = "*"
 
 [dev-packages]
 pylint = "*"
