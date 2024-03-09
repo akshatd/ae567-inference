@@ -19,15 +19,15 @@ _You must be as specific as possible, you cant just say “my uncertainty is rep
 
 - What is uncertain in this problem?
 
-  - We want the location(x, y coordinates) of the source of the scent in the 2D plane, which would require us to be able to predict how the scent dissipates in order to trace it back to the source. We are uncertain how the scent dissipates in the 2D plane.
+  - We want the location(x, y coordinates) of the source of the scent in the 2D plane, which would require us to be able to predict how the scent dissipates in order to trace it back to the source. We are uncertain how the scent dissipates in the 2D plane, which in turn makes us uncertain about the strength of the scent at any location besides at the data points.
 
 - What are you trying to learn?
 
-  - The model of dissipation of the scent in the 2D plane. Specifically, a model $M$ that consists of a set of parameters $\theta$ that can be used with an input set of coordinates (x, y) to predict the scent concentration at those coordinates in terms of a sensor reading.
+  - The model of dissipation of the scent in the 2D plane. Specifically, a model that consists of a covariance matrix defined by a covariance kernel that relates the scent at any point to the scent at any other point with a covariance matrix.
 
 - What quantities can you use to summarize your uncertainty?
 
-  - Variance of the posterior distribution of the parameters $\theta$ of the model $M$ given the sensor readings.
+  - $2\sigma or \sigma^2$ of the posterior distribution(predicted distribution of scent strength) at every point in the playing field. $2\sigma$ is used for plotting the uncertainty to be consistent with the in-class notebooks. However $\sigma^2$ is used for the acquisition function because it is the variance of the posterior distribution which is given directly by the `gpr` function, making it less computationally expensive compared to $2\sigma$ which requires a square root of the variance matrix.
 
 ## 1.2
 
@@ -45,3 +45,7 @@ _You must be as specific as possible, you cant just say “my uncertainty is rep
   - (a) How did you use the probabilistic description of the map to inform your decisions?
   - (b) How sensitive did you find your predictions to be to the choice of models (kernels,
     parameters, hyperparameters)? How did this impact your approach?
+
+## 1.4
+
+- When discussing your regression choice, be clear on the folloiwng points. How did you choose the GP kernel (nonparametric) or basis functions/features (parametric)? How did you choose the parameters? What did you do about any hyperparameters?
