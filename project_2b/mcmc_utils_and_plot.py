@@ -109,7 +109,7 @@ def sub_sample_data(samples, frac_burn=0.2, frac_use=0.7):
     frac_use: percentage of samples to use after burning, uniformly spaced
     """
     nsamples = samples.shape[0]
-    inds = np.arange(nsamples, dtype=np.int)
+    inds = np.arange(nsamples, dtype=int)
     start = int(frac_burn * nsamples)
     inds = inds[start:]
     nsamples = nsamples - start
