@@ -6,19 +6,19 @@ geometry: "margin=2cm"
 
 # Akshat Dubey
 
-## 1. Delayed Rejection Adaptive Metropolis
+## 1 Delayed Rejection Adaptive Metropolis
 
 ## 1.1 Adaptive Metropolis Hastings
 
-## 1.2. Delayed Rejection
+## 1.2 Delayed Rejection
 
-## 1.3. Delayed Rejection Adaptive Metropolis
+## 1.3 Delayed Rejection Adaptive Metropolis
 
-## 1.4. Target (Banana distribution)
+## 1.4 Target (Banana distribution)
 
 ![Banana distribution](figs/banana.svg){width=60%}
 
-## 1.5. Results
+## 1.5 Results
 
 ### 1.5.a Plots of 1D and 2D marginals
 
