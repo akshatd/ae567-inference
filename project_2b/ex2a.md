@@ -8,13 +8,14 @@ $\pagebreak$
 
 ## 2.A Satellite Dynamics
 
-After setting up the Satellite Dynamics, we can observe the true trajectory of the satellite vs the noisy trajectory needed for the inference problem starting at the initial state $x_0 = [-0.600, \ 0.400, \ -0.200, \ 0.663, \ 1.200, \ -1.500, \ 0.200]$
+After setting up the Satellite Dynamics, we can observe the true trajectory of the satellite and the noisy trajectory observed by the sensors
 
-![True Satellite Dynamics](figs/True%20Satellite%20Dynamics.svg){height=80%}
-![Noisy Satellite Dynamics](figs/Noisy%20Satellite%20Dynamics.svg){height=80%}
+![Satellite Dynamics](figs/Satellite%20Dynamics.svg){height=70%}
 
 1. Problem 1: Parameters are the control coefficients (k1, k2)
 2. Problem 2: Parameters are the control coefficients and a product of inertia (k1, k2, J12)
+
+$\pagebreak$
 
 ### 2.A.1 What is the likelihood model? Please describe how you determine this.
 
