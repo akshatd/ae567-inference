@@ -211,13 +211,13 @@ def scatter_matrix(fignum,
                 range=(use_mins[ii], use_maxs[ii]),
                 alpha=0.4)
         if specials is not None:
-            for special in specials:
-                if special['vals'][ii] is not None:
-                    # ax.axvline(special[ii], color='red', lw=2)
-                    if 'color' in special:
-                        ax.axvline(special['vals'][ii], color=special['color'], lw=2)
-                    else:
-                        ax.axvline(special['vals'][ii], lw=2)
+            # for special in specials:
+            if specials['vals'][ii] is not None:
+                # ax.axvline(special[ii], color='red', lw=2)
+                # if 'color' in special:
+                #     ax.axvline(special['vals'][ii], color=special['color'], lw=2)
+                # else:
+                ax.axvline(specials['vals'][ii], color='red', lw=2)
 
         ax.set_xlim((use_mins[ii]-1e-10, use_maxs[ii]+1e-10))
 
@@ -253,13 +253,13 @@ def scatter_matrix(fignum,
                 # ax.hist2d(samples[kk][:, ii], samples[kk][:, jj], bins=nbins)
 
             if specials is not None:
-                for special in specials:
-                    if 'color' in special:
-                        ax.plot(special['vals'][ii], special['vals'][jj], 'x',
-                                color=special['color'], ms=2, mew=2)
-                    else:
-                        ax.plot(special['vals'][ii], special['vals'][jj], 'x',
-                                ms=2, mew=2)
+                # for special in specials:
+                #     if 'color' in special:
+                #         ax.plot(special['vals'][ii], special['vals'][jj], 'x',
+                #                 color=special['color'], ms=2, mew=2)
+                #     else:
+                ax.plot(specials['vals'][ii], specials['vals'][jj], 'x',
+                        ms=2, mew=2)
 
             ax.set_xlim((use_mins[ii], use_maxs[ii]))
             ax.set_ylim((use_mins[jj]-1e-10, use_maxs[jj]+1e-10))
@@ -297,5 +297,5 @@ def scatter_matrix(fignum,
         ax.tick_params(axis='y', left='both', right=False, labelleft=False)
         ax.set_frame_on(True)
         ax.set_xlabel(name)
-    # plt.subplots_adjust(left=0.15, right=0.95)
+    plt.subplots_adjust(left=0.15, right=0.95)
     return fig, axs, gs

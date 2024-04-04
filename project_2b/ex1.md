@@ -229,7 +229,7 @@ The algorithm is as follows:
 
    4. Increment $k$
 
-Here the only tuning knob we have is $\gamma$, which can be used to adjust the acceptance ratio. Increasing it will cause the proposal distribution to be more exploratory, reducing the acceptance ratio and vice versa.
+Here the only tuning knob we have is $\gamma$, which can be used to adjust the acceptance ratio. Increasing it will cause the proposal distribution to be more exploratory, reducing the acceptance ratio and vice versa. Since it is used when the first proposal is too exploratory and rejected, it should be $\leq$ 1 to ensure that the second proposal is less exploratory and gets accepted.
 
 ## 1.3 Delayed Rejection Adaptive Metropolis
 
@@ -259,7 +259,7 @@ The Delayed Rejection Adaptive Metropolis (DRAM) algorithm is a combination of t
    4. Update the proposal distribution $q_1(y|x^{(k)})$ based on the samples generated so far using the formula in AM
    5. Increment $k$
 
-Here we have 2 tuning knobs, $\gamma$ and $s_d$, which can be used to adjust the acceptance ratio. Increasing $\gamma$ will cause the proposal distribution to be more exploratory, reducing the acceptance ratio and vice versa. Increasing $s_d$ will cause the proposal distribution to be more exploratory, reducing the acceptance ratio and vice versa. Again, even though it is available, i have not used the adaptation threshold as a tuning for the same reasons described in the AM section.
+Here we have 2 tuning knobs, $\gamma$ and $s_d$, which can be used to adjust the acceptance ratio. Increasing $\gamma$ will cause the proposal distribution to be more exploratory, reducing the acceptance ratio and vice versa. Increasing $s_d$ will cause the proposal distribution to be more exploratory, reducing the acceptance ratio and vice versa. Since $\gamma$ is used when the first proposal is too exploratory and rejected, it should be $\leq$ 1 to ensure that the second proposal is less exploratory and gets accepted. Again, even though it is available, i have not used the adaptation threshold as a tuning for the same reasons described in the AM section.
 
 ## 1.4 Banana Distribution (Already covered in section 1)
 
@@ -334,7 +334,7 @@ Acceptance ratios with tuning:
   - $\gamma$: 0.7
   - $s_d$: 2.88
 
-While tuning DR, I noticed that if i tried to push the acceptance ratio down by increasing $\gamma$ any further, the autocorrelation would become a lot worse, causing a much slower dropoff in autocorrelation and a higher IAC. Hence I decided to keep it at 2. For AM, I tried to push the acceptance ratio up by decreasing $s_d$, which worked as expected without significantly impacting the rest of the metrics. For DRAM, the acceptance ratio was already pretty good, so I only made a small adjustment to $\gamma$ to get it to 25%.
+While tuning DR, I noticed that if i tried to push the acceptance ratio down by increasing $\gamma$ beyond 2, the autocorrelation would become a lot worse, causing a much slower dropoff in autocorrelation and a higher IAC. Increasing $\gamma$ beyond 1 was done just to explore its effects, knowing that it is not intended to be used like this. according Hence, for the sake of experimentation, I decided to keep it at 2 since it was giving a better result than when it was $\leq$ 1. For AM, I tried to push the acceptance ratio up by decreasing $s_d$, which worked as expected without significantly impacting the rest of the metrics. For DRAM, the acceptance ratio was already pretty good, so I only made a small adjustment to $\gamma$ to get it to 25%.
 
 $\pagebreak$
 
