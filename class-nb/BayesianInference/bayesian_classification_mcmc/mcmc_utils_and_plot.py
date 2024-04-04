@@ -20,27 +20,24 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.colors as mcolors
 
 # For comments on the first four functions see the Gaussian Random Variable Notebook
-
-
 def lognormpdf(x, mean, cov):
     d, N = x.shape
     preexp = 1.0 / (2.0 * np.pi)**(d/2) / np.linalg.det(cov)**0.5
     diff = x - np.tile(mean[:, np.newaxis], (1, N))
     sol = np.linalg.solve(cov, diff)
-    inexp = np.einsum("ij,ij->j", diff, sol)
+    inexp = np.einsum("ij,ij->j",diff, sol)
     out = np.log(preexp) - 0.5 * inexp
     return out
 
-
 def build_cov_mat(std1, std2, rho):
     """Build a covariance matrix for a bivariate Gaussian distribution
-
+    
     Inputs
     ------
     std1 : positive real, standard deviation of first variable
     std2 : positive real, standard deviation of second variable
     rho  : real number between [-1, 1] representing the correlation
-
+    
     Returns
     -------
     Bivariate covariance Matrix
@@ -50,13 +47,11 @@ def build_cov_mat(std1, std2, rho):
     assert np.abs(rho) <= 1, "correlation must be betwene -1 and 1"
     return np.array([[std1**2, rho * std1 * std2], [rho * std1 * std2, std2**2]])
 
-
 def eval_normpdf_on_grid(x, y, mean, cov):
-    XX, YY = np.meshgrid(x, y)
-    pts = np.stack((XX.reshape(-1), YY.reshape(-1)), axis=0)
+    XX, YY = np.meshgrid(x,y)
+    pts = np.stack((XX.reshape(-1), YY.reshape(-1)),axis=0)
     evals = np.exp(lognormpdf(pts, mean, cov).reshape(XX.shape))
     return XX, YY, evals
-
 
 def eval_func_on_grid(func, gridx, gridy):
     "Evaluate the function *func* on a grid discretized by gridx and gridy"
@@ -65,31 +60,27 @@ def eval_func_on_grid(func, gridx, gridy):
         for jj in range(gridy.shape[0]):
             pt = np.array([gridx[ii], gridy[jj]])
             vals[ii, jj] = func(pt)
-
-    return vals
-
+            
+    return vals   
 
 def plot_bivariate_gauss(x, y, mean, cov, axis=None):
-    std1 = cov[0, 0]**0.5
-    std2 = cov[1, 1]**0.5
+    std1 = cov[0,0]**0.5
+    std2 = cov[1,1]**0.5
     mean1 = mean[0]
     mean2 = mean[1]
     XX, YY, evals = eval_normpdf_on_grid(x, y, mean, cov)
     if axis is None:
-        fig, axis = plt.subplots(2, 2, figsize=(10, 10))
-
-    axis[0, 0].plot(x, np.exp(lognormpdf(x[np.newaxis, :],
-                    np.array([mean1]), np.array([[std1**2]]))))
-    axis[0, 0].set_ylabel(r'$f_{X_1}$')
-    axis[1, 1].plot(
-        np.exp(lognormpdf(y[np.newaxis, :], np.array([mean2]), np.array([[std2**2]]))), y)
-    axis[1, 1].set_xlabel(r'$f_{X_2}$')
-    axis[1, 0].contourf(XX, YY, evals)
-    axis[1, 0].set_xlabel(r'$x_1$')
-    axis[1, 0].set_ylabel(r'$x_2$')
-    axis[0, 1].set_visible(False)
+        fig, axis = plt.subplots(2,2, figsize=(10,10))
+        
+    axis[0,0].plot(x, np.exp(lognormpdf(x[np.newaxis,:], np.array([mean1]), np.array([[std1**2]]))))
+    axis[0,0].set_ylabel(r'$f_{X_1}$')
+    axis[1,1].plot(np.exp(lognormpdf(y[np.newaxis,:], np.array([mean2]), np.array([[std2**2]]))),y)
+    axis[1,1].set_xlabel(r'$f_{X_2}$')
+    axis[1,0].contourf(XX, YY, evals)
+    axis[1,0].set_xlabel(r'$x_1$')
+    axis[1,0].set_ylabel(r'$x_2$')
+    axis[0,1].set_visible(False)
     return fig, axis
-
 
 def sub_sample_data(samples, frac_burn=0.2, frac_use=0.7):
     """Subsample data by burning off the front fraction and using another fraction
@@ -101,7 +92,7 @@ def sub_sample_data(samples, frac_burn=0.2, frac_use=0.7):
     frac_use: percentage of samples to use after burning, uniformly spaced
     """
     nsamples = samples.shape[0]
-    inds = np.arange(nsamples, dtype=int)
+    inds = np.arange(nsamples, dtype=np.int)
     start = int(frac_burn * nsamples)
     inds = inds[start:]
     nsamples = nsamples - start
@@ -110,13 +101,12 @@ def sub_sample_data(samples, frac_burn=0.2, frac_use=0.7):
     inds = inds[inds2]
     return samples[inds, :]
 
-
 def scatter_matrix(fignum,
-                   samples,  # list of chains
+                   samples, #list of chains
                    mins=None, maxs=None,
                    upper_right=None,
                    specials=None,
-                   hist_plot=True,  # if false then only data
+                   hist_plot=True, # if false then only data
                    nbins=200,
                    gamma=0.5,
                    labels=None):
@@ -133,11 +123,11 @@ def scatter_matrix(fignum,
             mm = [np.quantile(samp[:, ii], 0.01, axis=0) for samp in samples]
             # print("\t mins = ", mm)
             mins[ii] = np.min(mm)
-            mm = [np.quantile(samp[:, ii], 0.99, axis=0) for samp in samples]
+            mm = [np.quantile(samp[:, ii], 0.99, axis=0) for samp in samples]            
             # print("\t maxs = ", mm)
             maxs[ii] = np.max(mm)
 
-            # if specials is not None:
+            #if specials is not None:
             #    if isinstance(specials, list):
             #        minspec = np.min([spec['vals'][ii] for spec in specials])
             #        maxspec = np.max([spec['vals'][ii] for spec in specials])
@@ -146,6 +136,7 @@ def scatter_matrix(fignum,
             #        maxspec = spec['vals'][ii]
             #    mins[ii] = min(mins[ii], minspec)
             #    maxs[ii] = max(maxs[ii], maxspec)
+    
 
     deltas = (maxs - mins) / 10.0
     use_mins = mins - deltas
@@ -183,28 +174,28 @@ def scatter_matrix(fignum,
             ax.tick_params(axis='x', bottom=True, top=False, labelbottom=True)
             if labels:
                 ax.set_xlabel(labels[ii])
-
+            
         ax.tick_params(axis='y', left=False, right=False, labelleft=False)
         ax.set_frame_on(False)
 
         sampii = np.concatenate([samples[kk][:, ii] for kk in range(nchains)])
         # for kk in range(nchains):
         # print("sampii == ", sampii)
-        ax.hist(sampii,
+        ax.hist(sampii,            
                 # ax.hist(samples[kk][:, ii],
                 bins='sturges',
                 density=True,
                 edgecolor='black',
                 stacked=True,
-                range=(use_mins[ii], use_maxs[ii]),
+                range=(use_mins[ii],use_maxs[ii]),
                 alpha=0.4)
         if specials is not None:
-            # for special in specials:
+            #for special in specials:
             if specials['vals'][ii] is not None:
-                # ax.axvline(special[ii], color='red', lw=2)
-                # if 'color' in special:
-                #    ax.axvline(special['vals'][ii], color=special['color'], lw=2)
-                # else:
+                    # ax.axvline(special[ii], color='red', lw=2)
+                    #if 'color' in special:
+                    #    ax.axvline(special['vals'][ii], color=special['color'], lw=2)
+                    #else:
                 ax.axvline(specials['vals'][ii], lw=2)
 
         ax.set_xlim((use_mins[ii]-1e-10, use_maxs[ii]+1e-10))
@@ -213,6 +204,7 @@ def scatter_matrix(fignum,
             # print("jj = ", jj)
             axs[jj*l + ii] = fig.add_subplot(gs[jj+start, ii])
             ax = axs[jj*l + ii]
+
 
             if jj < dim-1:
                 ax.tick_params(axis='x', bottom=False, top=False, labelbottom=False)
@@ -226,8 +218,8 @@ def scatter_matrix(fignum,
                 ax.tick_params(axis='y', left=True, right=False, labelleft=True)
                 if labels:
                     ax.set_ylabel(labels[jj])
-
-            ax.set_frame_on(True)
+                    
+            ax.set_frame_on(True)     
 
             for kk in range(nchains):
                 if hist_plot is True:
@@ -241,18 +233,21 @@ def scatter_matrix(fignum,
                 # ax.hist2d(samples[kk][:, ii], samples[kk][:, jj], bins=nbins)
 
             if specials is not None:
-                # for special in specials:
-                # if 'color' in special:
-                #    ax.plot(special['vals'][ii], special['vals'][jj], 'x',
-                #            color=special['color'], ms=2, mew=2)
-                # else:
+                #for special in specials:
+                    #if 'color' in special:
+                    #    ax.plot(special['vals'][ii], special['vals'][jj], 'x',
+                    #            color=special['color'], ms=2, mew=2)
+                    #else:
                 ax.plot(specials['vals'][ii], specials['vals'][jj], 'x',
                         ms=2, mew=2)
+
 
             ax.set_xlim((use_mins[ii], use_maxs[ii]))
             ax.set_ylim((use_mins[jj]-1e-10, use_maxs[jj]+1e-10))
 
-    plt.tight_layout(pad=0.01)
+
+
+    plt.tight_layout(pad=0.01);
     if upper_right is not None:
         size_ur = int(dim/2)
 
@@ -269,7 +264,7 @@ def scatter_matrix(fignum,
         ub = np.max([np.quantile(val, 0.99) for val in vals])
         for kk in range(nchains):
             if log_transform is not None:
-                pv = np.log10(vals[kk])
+                pv = np.log10(vals[kk]) 
                 ra = (np.log10(lb), np.log10(ub))
             else:
                 pv = vals[kk]
