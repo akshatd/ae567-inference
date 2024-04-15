@@ -102,3 +102,61 @@ C^{\delta k} &= \bar C^{\delta k} - U S^{-1} U^T
 $$
 
 ## 1.2 Write down all the integrals required for Gaussian filtering, plug-in the equations given above and simplify any integrals that are analytically tractable
+
+Gaussian filtering equations are the following:
+
+Let
+
+$$
+\text{Measurements from time $a$ to $b$} = y^{a:b}
+$$
+
+### Predict
+
+Here, we are trying to compute the distribution of the predicted state of the pendulum at time $k$ using the measurements till time $k-1$. This distribution can be approximated as a normal distribution with a mean and covariance.
+The prediction mean $\bar m^k$ here is just the expectation of the dynamics at time $k$ given the measurements till time $k-1$. Hence, we can just integrate(or "sum") over all possibilities of the dynamics using $\Phi(x^{k-1}; \Delta t)$ as the value and $P(x^{k-1}|y^{0:k-1})$ as the probability of that value.
+The prediction covariance $\bar C^k$ is the covariance of the dynamics at time $k$ given the measurements till time $k-1$. Hence, we can just find the covariance over all possibilities of the difference of the dynamics from the mean using $(\Phi(x^{k-1}; \Delta t) - \bar m^k)$ and use its "square" as the value and $P(x^{k-1}|y^{0:k-1})$ as the probability of that value.
+
+$$
+\begin{aligned}
+\bar m^k &= \mathbb{E}[x^k|y^{0:k-1}] \\
+ &= \int \Phi(x^{k-1}; \Delta t) P(x^{k-1}|y^{0:k-1}) dx^{k-1} \\
+ &\text{substituting the dynamics and distribution} \\
+ &= \int
+\begin{bmatrix}
+x_1^{k-1} + x_2^{k-1} \Delta t \\
+x_2^{k-1} - g \sin(x_1^{k-1}) \Delta t
+\end{bmatrix}
+\mathcal{N}(x^{k-1}; m^{k-1}, C^{k-1}) dx^{k-1} \\
+ & \text{using linear gaussian multiplication wherever possible} \\
+ &= \begin{bmatrix}
+m_1^{k-1} + m_2^{k-1} \Delta t \\
+m_2^{k-1} - g \Delta t \int \sin(x_1^{k-1}) \mathcal{N}(x^{k-1}; m^{k-1}, C^{k-1}) dx_1^{k-1} \\
+\end{bmatrix} \\
+\bar C^k &= \mathbb{C}ov[x^k, x^k|y^{0:k-1}] \\
+ &= \int (\Phi(x^{k-1}; \Delta t) - \bar m^k) (\Phi(x^{k-1}; \Delta t) - \bar m^k)^T P(x^{k-1}|y^{0:k-1}) dx^{k-1} \\
+ &\text{substituting the dynamics and distribution} \\
+ &= \int
+\begin{bmatrix}
+x_1^{k-1} + x_2^{k-1} \Delta t - \bar m_1^k \\
+x_2^{k-1} - g \sin(x_1^{k-1}) \Delta t - \bar m_2^k
+\end{bmatrix}
+\begin{bmatrix}
+x_1^{k-1} + x_2^{k-1} \Delta t - \bar m_1^k & \\
+x_2^{k-1} - g \sin(x_1^{k-1}) \Delta t - \bar m_2^k
+\end{bmatrix} ^T
+\mathcal{N}(x^{k-1}; m^{k-1}, C^{k-1}) dx^{k-1} \\
+ & \text{using linear gaussian multiplication wherever possible} \\
+ &= \begin{bmatrix}
+\Delta t^2 & \frac{\Delta t^2}{2} \\
+\frac{\Delta t^2}{2} & \Delta t
+\end{bmatrix} + \begin{bmatrix}
+m_2^{k-1} \Delta t - g \Delta t \int \sin(x_1^{k-1}) \mathcal{N}(x^{k-1}; m^{k-1}, C^{k-1}) dx_1^{k-1} \\
+m_2^{k-1} - g \Delta t \int \sin(x_1^{k-1}) \mathcal{N}(x^{k-1}; m^{k-1}, C^{k-1}) dx_1^{k-1}
+\end{bmatrix}
+\begin{bmatrix}
+m_2^{k-1} \Delta t - g \Delta t \int \sin(x_1^{k-1}) \mathcal{N}(x^{k-1}; m^{k-1}, C^{k-1}) dx_1^{k-1} \\
+m_2^{k-1} - g \Delta t \int \sin(x_1^{k-1}) \mathcal{N}(x^{k-1}; m^{k-1}, C^{k-1}) dx_1^{k-1}
+\end{bmatrix} ^T
+\end{aligned}
+$$
