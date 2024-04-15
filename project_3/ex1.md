@@ -67,7 +67,14 @@ Let $A^k$ and $H^{\delta k}$ be the derivatives of the dynamics and measurements
 $$
 \begin{aligned}
 A^k &= \nabla_x \Phi(x^k; \Delta t) | _{x^k = m_{k-1}} \\
+&= \begin{bmatrix}
+1 & \Delta t \\
+-g \cos(m_1^{k-1}) \Delta t & 1
+\end{bmatrix} \\
 H^{\delta k} &= \nabla_x h(x^{\delta k}) | _{x^{\delta k} = \bar m^{\delta k}} \\
+&= \begin{bmatrix}
+\cos(\bar m_1^{\delta k}) & 0
+\end{bmatrix}
 \end{aligned}
 $$
 
