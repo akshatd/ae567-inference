@@ -242,19 +242,14 @@ $\pagebreak$
 The Unscented Kalman Filter uses Gaussian integration to evaluate the integrals in the prediction and update steps. To make things easier, we consider integration with respect to a standard Gaussian measure, $u \sim \mathcal{N}(0, I)$, which we can transform back to the state by
 
 $$
-\begin{aligned}
-x &= m + \sqrt{q} u \\
-\text{where }& \\
-m &: \text{mean of the state} \\
-q &: \text{covariance of the state} \\
-\end{aligned}
+x = \mu + \sqrt{\Sigma} u , x \sim \mathcal{N}(\mu, \Sigma)
 $$
 
 So, in any of the equations where you have an integral over some function $f$ of the state $x$ multiplied by a probability, you could rewrite it as
 
 $$
 \begin{aligned}
-\int f(x) P(x) dx &= \int f(m + \sqrt{q} u) \mathcal{N}(u; 0, I) du \\
+\int f(x) P(x) dx &= \int f(\mu + \sqrt{\Sigma} u) \mathcal{N}(u; 0, I) du \\
 \end{aligned}
 $$
 
@@ -264,8 +259,53 @@ $$
 P(x^{k-1}|y^{0:k-1}) = \mathcal{N}(m^{k-1}, C^{k-1})
 $$
 
-For the update step, this integration involves integrating over the probabilities of the state in the current prediction step,
+For update , this integration involves integrating over the probabilities of the state in the current prediction step,
 
 $$
 P(x^{\delta k}|y^{0:k-1}) = \mathcal{N}(\bar m^{\delta k}, \bar C^{\delta k})
 $$
+
+To compute these integrals, the Unscented Kalman filter uses a few points spread across the probability distribution $\sim \mathcal{N}(0,1)$, starting with the mean and 2 points per dimension in the state, such that they cover both the positive and negative sides of the mean in the dimension. Let this set of points be $\bf{M}$, and in 2 dimensions, it would look like
+
+$$
+\begin{aligned}
+\bf{M} &= \begin{Bmatrix}
+\begin{pmatrix} 0 \\ 0 \end{pmatrix},
+\begin{pmatrix} 1 \\ 0 \end{pmatrix},
+\begin{pmatrix} 0 \\ 1 \end{pmatrix},
+\begin{pmatrix} -1 \\ 0 \end{pmatrix},
+\begin{pmatrix} 0 \\ -1 \end{pmatrix}
+\end{Bmatrix}
+\end{aligned}
+$$
+
+The Unscented Kalman Filter then scales these points to enable a better approximation of the integrals yielding us quadrature points $u^i$, and then finally associates weights to calculate the mean $w^i_m$ and covariance $w^i_C$ in our prediction and update steps. The total sum of all the function values at these transformed points multiplied with the weights gives the integral.
+
+The Unscented Kalman Filter defines the points and weights as follows:
+
+$$
+\begin{aligned}
+\text{Tuning parameters: } & \alpha, \beta, \kappa \\
+\text{Dimension of the state: } & d = 2 \\
+\text{Scaling factor: } & \lambda = \alpha^2 (d + \kappa) - d \\
+\text{Quadrature Points: } & u^i =  \sqrt{d + \lambda} \hat u^i, \hat u^i \in \bf{M} \\
+\text{Mean Weights: } & w^i_m = \left\{ \begin{array}{ll}
+\frac{\lambda}{d + \lambda} & \mbox{$i = 0$} \\
+\frac{1}{2(d + \lambda)} & \mbox{otherwise}
+\end{array} \right. \\
+\text{Covariance Weights: } & w^i_C = \left\{ \begin{array}{ll}
+\frac{\lambda}{d + \lambda} + (1 - \alpha^2 + \beta) & \mbox{$i = 0$} \\
+\frac{1}{2(d + \lambda)} & \mbox{otherwise}
+\end{array} \right. \\
+\end{aligned}
+$$
+
+Then the Unscented Kalman Filter approximation is as follows:
+
+$$
+\begin{aligned}
+\int f(x) P(x) dx &\approx \sum_i^{2d} f(\mu + \sqrt{\Sigma} u^i)w^i \\
+\end{aligned}
+$$
+
+For the implementation, we will replace all the Gaussian Filtering equations in section 1.2 with the Unscented Kalman Filter approximation.
