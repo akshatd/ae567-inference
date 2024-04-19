@@ -292,7 +292,7 @@ We can see that the Extended Kalman filter manages to estimate the state of the 
 
 ## 2.2 Unscented Kalman Filter (order 3)
 
-The 3rd order Unscented Kalman Filter uses a $2d+1$ quadrature rule, where $d$ is the number of dimensions in the state. It starts with the mean of the state and assigning 2 points per dimension in the state, such that they cover both the positive and negative sides of the mean in the dimension. We start with a set of points be $\bf{M}$, and in 2 dimensions, it would look like
+The 3rd order Unscented Kalman Filter is accurate up to third order integrals and uses a $2d+1$ quadrature rule, where $d$ is the number of dimensions in the state. It starts with the mean of the state and assigning 2 points per dimension in the state, such that they cover both the positive and negative sides of the mean in the dimension. We start with a set of points be $\bf{M}$, and in 2 dimensions, it would look like
 
 $$
 \begin{aligned}
@@ -335,9 +335,9 @@ $$
 \end{aligned}
 $$
 
-Where we use $w^i = w^i_m$ when calculating the mean and $w^i = w^i_C$ when calculating the covariance.
+Where we use $w^i = w^i_m$ when calculating the mean and $w^i = w^i_C$ when calculating the covariance. These steps for calculating the sigma points and weights has been implemented in the function `unscented_points`, which returns all the sigma points and weights that can be used directly in the relevant integrals for the prediction and update steps, where the functions and distributions are as described in section 2.
 
-The results for the Unscented Kalman Filter are plotted below, and we can see that it performs slightly better than the Extended Kalman Filter in the worst case, with the estimates following the true states more closely. The MSE is also slightly lower than the EKF in the worst case when the noise is high. However we can see that it takes a lot longer to converge to the true state compared to the EKF, and the estimates in the beginning are quite bad, even in the case of low noise and frequent measurements.
+The results for the Unscented Kalman Filter are plotted below, and we can see that it performs slightly better than the Extended Kalman Filter in the worst case, with the estimates following the true states more closely. The MSE is also slightly lower than the EKF in the worst case when the noise is high. However we can see that it takes a lot longer to converge to the true state compared to the EKF, and the estimate uncertainty in the beginning fifth of the time period is quite bad, even in the case of low noise and frequent measurements.
 
 ![UKF estimates](<figs/Pendulum%20trajectories%20(UKF).svg>)
 
@@ -345,9 +345,87 @@ $\pagebreak$
 
 ## 2.3 Gauss-Hermite Kalman Filter (order 3 and 5)
 
-TODO: Add explanation
+The Gauss-Hermite Kalman Filter uses Gaussian Quadratures with a $O^d$ point quadrature rule and is exact for polynomials up to order $2O-1$ where $O$ is the order and $d$ is the dimension of the state. We can use the Galub-Welsch algorithm that finds the weights and sigma points for the quadrature through the solution of an eigenvalue problem associated with orthogonal polynomials.
 
-The results for the Gauss-Hermite Kalman Filter are plotted below, and we can see that it performs the best out of all the filters in the worst case, with the estimates following the true states closer than the rest. The MSE is also the lowest among all the filters in the worst case when the noise is high. We can see that it takes a lot longer to converge to the true state compared to the EKF, and the estimates in the beginning are quite bad, even in the case of low noise and frequent measurements.
+A set of polynomials ${p_i (x)}^m_{i=0}$ is orthogonal with respect to $w(x)$ if
+
+$$
+\int p_i(x) p_j(x) w(x) dx = 0, \text{when } i \neq j
+$$
+
+and all orthogonal polynomials obey some three-term recurrence relation
+
+$$
+\begin{aligned}
+p_n(x) &= (a_n x + b_n) p_{n-1}(x) - c_n p_{n-2}(x) \\
+\text{where }& p_{-1}(x) = 0, p_0(x) = 1
+\end{aligned}
+$$
+
+There are many such families of polynomials, but here we use the Hermite polynomials, can be found using a recursive formula
+
+$$
+\begin{aligned}
+H_{n+1}(x) &= xH_n(x) - nH_{n-1}(x) \\
+H_n{x} &= x H_{n-1}(x) - (n-1)H_{n-2}(x) \\
+\text{giving us: }& \\
+a_n &= 1 \\
+b_n &= 0 \\
+c_n &= n-1 \\
+\end{aligned}
+$$
+
+The Hermite polynomials are orthogonal with respect to the standard normal distribution, which is what we need since we are integrating with respect to a standard normal measure for our marginalization in the update and prediction steps.
+
+$$
+\begin{aligned}
+\int H_i(u) H_j(u) \mathcal{N}(u; 0, 1) du &= i! \delta_{ij} \\
+\text{where } \delta_{ij} &= \left\{ \begin{array}{ll}
+1 & \mbox{if $i = j$} \\
+0 & \mbox{if $i \neq j$}
+\end{array} \right.
+\end{aligned}
+$$
+
+So now that we have our orthogonal polynomials, we can move towards our eigenvalue problem, tackled in `gh_oned`. We setup a symmetric tridiagonal matrix $T_{O \times O}$ according to
+
+$$
+\begin{aligned}
+T_{O \times O} &= \begin{bmatrix}
+\alpha_1 & \beta_1 & 0 & 0 & \ldots & 0 \\
+\beta_1 & \alpha_2 & \beta_2 & 0 & \ldots & 0 \\
+0 & \beta_2 & \alpha_3 & \beta_3 & \ldots & 0 \\
+. & . & . & . & . & . \\
+\ldots & \ldots & \ldots & \ldots & \ldots & \beta_{O-1} \\
+. & . & . & 0 & \beta_{O-1} & \alpha_O \\
+\end{bmatrix} \\
+\text{where } & \\
+\alpha_i &= -\frac{b_i}{a_i} \\
+\beta_i &= \sqrt{\frac{c_{i+1}}{a_i a_{i+1}}} \\
+\end{aligned}
+$$
+
+Next we take the do an eigenvalue decomposition of this matrix to get the eigenvalues and eigenvectors. The eigenvalues are the points $u^i$. The weights $w^i$ are calculated using a constant times the first element of each orthonormal eigenvector squared. The constant is chosen such that the sum of the weights is 1.
+
+At this point we have our $O$ points and weights with respect to a standard gaussian in 1 dimension. We extend this to $d$ dimensions by duplicating the points in each dimension such that we get $O^d$ points. The weights are then calculated by multiplying the weights of each dimension together. This is done in the function `tensorize`
+
+To put it more concretely, if we have 2 dimensions with an order of 3, we would have $3^2 = 9$ points and weights. The points $u^{ij}$ would be the cartesian product of the 1D points $u^i$, and the weights would be the product of the 1D weights.
+
+We finally have our set of points and weights, so we just need to transform these points (done in `rotate_points` function) to our target distribution and do a weighted sum. Following the notation in section 2, we should be able to approximate an integral in 2 dimensions for our problem as follows
+
+$$
+\begin{aligned}
+\int f(x) P(x) dx & \approx \sum_{o_1=1}^O \sum_{o_2=1}^O f(\mu + \sqrt{\Sigma} u^{o_1o_2}) w^{o_1o_2} \\
+\text{where } & \text{there are $O$ total points in the first dimension} \\
+o_d &=  \text{: the index of the point in the $d^{th}$ dimension} \\
+u^{o_1o_2} &= \begin{pmatrix} u_1^{o_1} \\ u_2^{o_2} \end{pmatrix} \\
+w^{o_1o_2} &= w^{o_1} w^{o_2}
+\end{aligned}
+$$
+
+Now that we are back in the familiar notation of approximating integrals, we can substitute the functions and distributions from the prediction and update steps as described in section 2 to get the Gauss-Hermite Kalman filter approximation for both cases when $O = 3$ and $O = 5$.
+
+The results for both the 3rd and 5th order Gauss-Hermite Kalman Filter are plotted below. I chose to do both because the effort to make them both work was trivial and it would give me better insights into what happens when we increase the order of approximation for such a low-dimensional problem. We can see that it performs the best out of all the filters in the worst case, with the estimates that follow the true states closer than the rest. The MSE is also the lowest among all the filters in the worst case when the noise is high. We can see that it takes a lot longer to converge to the true state compared to the EKF, and the estimate uncertainty in the beginning fifth of the time period is quite bad, even in the case of low noise and frequent measurements. We can also see that the difference between the 3rd and 5th order GHKF is not that much, with the 5th order GHKF having slightly better estimates and lower MSE.
 
 ![3rd order GHKF estimates](<figs/Pendulum%20trajectories%20(3rd%20order%20GHKF).svg>)
 
@@ -357,11 +435,48 @@ $\pagebreak$
 
 ## 2.4 Comparison
 
-TODO: Add comparison
+### Robustness
 
-- time complexity
-- wall time
-- accuracy, MSE
-- plot comparing low medium and high noise for all 3 algos
+While
+
+### Computational complexity and timing
+
+### Accuracy
+
+$\pagebreak$
 
 # 3 Particle Filtering
+
+In Particle filtering, we are still trying to solve the same problem of estimating the state of the pendulum by assimilating data and forming a posterior, but here the big difference compared to the Gaussian Integration based Filters is that we do not assume that the filtering distribution is gaussian. Particle Filtering uses importance sampling to sample from an arbitrary distribution, which makes it quite powerful since it can approximate any distribution. The basic idea is to represent the filtering distribution as a set of particles, each with a weight, and then propagate these particles through the dynamics and measurement model to get the new state and weight of the particles. The weights are then normalized to get the posterior distribution. The particles are resampled based on their weights to avoid degeneracy, and the process is repeated for every new measurement. This sequential sampling of the posterior is why Particle Filtering is also called Sequential Importance Sampling.
+
+## Dynamics as the proposal
+
+TODO: explain
+
+## EKF strategy for approximating the proposal
+
+TODO: explain
+
+## 3.1 Running the particle filters
+
+The 3 combinations of $\delta$ and $R$ chosen are $(\delta, R) = {(5, 0.001), (40, 0.1), (40, 1)}$. These were chosen because they include both the extremes plus a middle ground in terms of the $\pm 2 \sigma$ bounds of the state estimates for the various filters in section 2. This is to make sure that we have a good idea of how the particle filter performs in the best case scenario and also when it breaks in an unrealistically high noise scenario.
+
+### Dynamics as the proposal
+
+![Dynamics proposal: Particle filter filtering distribution](figs/Filtering%20Distr:%20PF%20with%20dynamics%20proposal.svg)
+
+We can see that here the particle filter tracks the true state for both the low and medium noise case pretty well. If you look at the estimation performance in the worst case, it is actually not that bad considering the data points are nowhere close to the actual dynamics of the system. It is performing similar to the Gaussian Integration based Kalman Filters, which is a good sign but is is better in the sense that it is able to narrow down the uncertainty a lot faster than the Kalman Filters, which have large uncertainty for almost the first quarter of the run even in low noise scenarios. One curious thing I noticed was that for a ver low value of measurement noise $r$, I would get a lot of particle degeneracy and resampling, while for high noise that did not seem to happen. This actually makes sense since for a very low noise, the distribution will be pretty tight compared to the noise in the dynamics, and since the proposal is only based on the dynamics, only a very small number of particles will have a high weight based on the likelihood from the data, leading to a lot of resampling.
+
+![Dynamics proposal: Effective sample size](figs/ess_PF%20with%20dynamics%20proposal.svg)
+
+### EKF strategy for approximating the proposal
+
+TODO: make this plot and fill this up
+
+## 3.2
+
+Here we create a reference simulation using the dynamics proposal for the 3 chosen combinations of $\delta$ and $R$ to compare the performance of the Particle Filter with the Gaussian Integration based Kalman Filters. The joint posterior of the states is drawn at t = [0, 1.25, 2.5, 3.75, 5] for the 3 cases, and the gaussian distribution approximated by EKF is overlaid on top as well to compare how good the Gaussian approximation is. I have used a million samples for each time step in the particle filter to get a good approximation of the posterior, but I have only plotted 10000 samples so that we can still see the contours of the non-gaussian and gaussian posterior clearly.
+
+<!-- ![Joint Posterior for dynamics proposal with UKF approximation](figs/Posterior:%20PF%20with%20dynamics%20proposal.svg) -->
+
+We can see that as the noise increases, the posterior becomes more and more non-gaussian, and the Gaussian approximation by the UKF becomes worse and worse. In the presence of low noise, the state estimates are very close to each other, and will behave similarly as time progresses, retaining their gaussian shape from the gaussian prior pretty well. However, as we increase the measurement noise, the samples stray further away from the prior mean and start getting affected a lot by the nonlinear dynamics, which is why we see that the posterior propagates to become more and more non-gaussian. Therefore, the UKF approximation is really good when there is low noise, but is totally wrong when there is high noise, which is expected since the posterior is extremely non-gaussian. In the case of medium noise, we can see that the EKF approximation is not that bad, staying close to the mean and mostly maintaining the spread of the posterior. However, in some occasions like ($\delta$=40, R=0.1, t = 2.5) the covariance is clearly wrong since the gaussian is stretched in the opposite direction compared to the true posterior.
