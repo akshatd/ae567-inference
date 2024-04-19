@@ -286,7 +286,7 @@ $\pagebreak$
 
 The state estimates and their $\pm 2\sigma$ bounds are plotted below, with the measurement interval($\delta$), noise(R) and mean-squared errors(MSE) in the titles:
 
-![EKF estimates](figs/Pendulum%20trajectories%20with%20EKF.svg)
+![EKF estimates](<figs/Pendulum%20trajectories%20(EKF).svg>)
 
 We can see that the Extended Kalman filter manages to estimate the state of the pendulum quite well, with the estimates following the true states closely when the noise is low and the measurements are taken frequently. The MSE is also low compared to the range of values of the states. We can see that increasing noise worsens the performance of the filter a lot more than decreasing the number of measurements. In the case that the noise is very high, the state estimate veers off the true state by quite a bit. In some instances when the realization of the noise was very large, the EKF can give quite bad estimates compared to the real states, with the trajectory no longer following the sinusoid that we expect from the pendulum.
 
@@ -339,7 +339,7 @@ Where we use $w^i = w^i_m$ when calculating the mean and $w^i = w^i_C$ when calc
 
 The results for the Unscented Kalman Filter are plotted below, and we can see that it performs slightly better than the Extended Kalman Filter in the worst case, with the estimates following the true states more closely. The MSE is also slightly lower than the EKF in the worst case when the noise is high. However we can see that it takes a lot longer to converge to the true state compared to the EKF, and the estimates in the beginning are quite bad, even in the case of low noise and frequent measurements.
 
-![UKF estimates](figs/Pendulum%20trajectories%20with%20UKF.svg)
+![UKF estimates](<figs/Pendulum%20trajectories%20(UKF).svg>)
 
 $\pagebreak$
 
@@ -349,7 +349,9 @@ TODO: Add explanation
 
 The results for the Gauss-Hermite Kalman Filter are plotted below, and we can see that it performs the best out of all the filters in the worst case, with the estimates following the true states closer than the rest. The MSE is also the lowest among all the filters in the worst case when the noise is high. We can see that it takes a lot longer to converge to the true state compared to the EKF, and the estimates in the beginning are quite bad, even in the case of low noise and frequent measurements.
 
-![GHKF estimates](figs/Pendulum%20trajectories%20with%20GHKF.svg)
+![3rd order GHKF estimates](<figs/Pendulum%20trajectories%20(3rd%20order%20GHKF).svg>)
+
+![5th order GHKF estimates](<figs/Pendulum%20trajectories%20(5th%20order%20GHKF).svg>)
 
 $\pagebreak$
 
