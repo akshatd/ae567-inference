@@ -437,25 +437,140 @@ $\pagebreak$
 
 ### Robustness
 
-While
+While all the algorithms seem to perform similarly, the figures above do not capture all the conditions of the noise experienced by the system. As can be seen in this comparison of all the filters at a particular realization of the noise at $\delta=5$ and $R=0.1$
+
+![Comparison of all filters at $\delta=5$ and $R=0.1$](figs/KF%20Comparison%20at%20$\delta$=5;R=0.1.svg)
+
+Because the Kalman filter uses a linear approximation, if the function is nearing its peak and a noisy measurement is received that is going up, the Filter continues to estimate the state in the upwards trajectory, not knowing that the actual nonlinear dynamics would not allow it. This causes it to go beyond $\pi$, which is the physical limit of the system and make the estimates worthless. This does not happen for any of the nonlinear Gaussian integration based filters, which are able to estimate the state correctly even in the presence of high noise. It is interesting to see that while the EKF has lost its trajectory, it continues to follow the sinusoidal pattern. This is because the values of the measurement function are $sin$, and they wrap around after an offset of $2\pi$, which is why the EKF is able to follow the sinusoidal pattern after the the state $x_1$, the angle, has gone past $\sim$ 6 radians. The EKF also has low uncertainty here since the estimated observations will actually match the real observations. I chose not to wrap the angle in the dynamics function because that would make the dynamics discontinuous and doing do made the filter performance even worse. I do wrap the angle when plotting the samples for the particle filter in the next section, because there the weights of the samples will get wrongly assigned to high values of the angle, which would lead to actually a worse visualization and estimate of the real state.
 
 ### Computational complexity and timing
 
+In the following table are the performance characteristics of the functions to run all the 16 possible combinations of $\delta$ and $R$ for the 4 filters. The number of function evaluations is the number of times the (dynamics + observation) function is called to get the estimate (predict + update) of the state at each time step. The time taken is the total time taken to run the function for all the time steps.
+
+| Filter                                  | Time taken (s) | Number of function evaluations |
+| --------------------------------------- | -------------- | ------------------------------ |
+| Extended Kalman Filter                  | 0.136          | 2                              |
+| Unscented Kalman Filter                 | 0.679          | 5                              |
+| Gauss-Hermite Kalman Filter (3rd order) | 1.421          | 9                              |
+| Gauss-Hermite Kalman Filter (5th order) | 2.837          | 25                             |
+
+The EKF is the fastest, followed by the UKF, and then the GHKF. For the integration based filters, the time taken scales with the number of points used in the quadrature rule, which is why the 5th order GHKF is slower than the 3rd order GHKF. Between the UKF and GHKF, the function to compute the quadrature points is also something that might take up time, which could account for the nonlinear scaling between the number of function evaluations and the time taken. Since the quadrature points are calculated based on a normal gaussian, one optimization could be to calculate the points and weights once and store them, and then use them for all the time steps with just a transformation to the state distribution.
+
 ### Accuracy
+
+In the following table, I plot the best and worst case mean squared error for all the gaussian filters at the 16 possible combinations of $\delta$ and $R$. This data is also present in the plots, but is summarized here for convenience.
+
+| Filter                                  | Best MSE ($x_1$) | Worst MSE ($x_1$) | Best MSE ($x_2$) | Worst MSE ($x_2$) |
+| --------------------------------------- | ---------------- | ----------------- | ---------------- | ----------------- |
+| Extended Kalman Filter                  | 0.0051437        | 0.3138411         | 0.00684505       | 2.46917257        |
+| Unscented Kalman Filter                 | 0.03405444       | 0.45830967        | 0.1755322        | 3.38536434        |
+| Gauss-Hermite Kalman Filter (3rd order) | 0.02228515       | 0.24086273        | 0.14544729       | 1.78955291        |
+| Gauss-Hermite Kalman Filter (5th order) | 0.02603395       | 0.30501824        | 0.15071911       | 2.24503242        |
+
+Here we can see that all filters do a good job of estimating the state, performing roughly within the same magnitude of MSE. It is surprising that EKF performs so well given the much lower computation load compared to the other filters. However, we must take note that all of the integration based filters had a period of high uncertainty at the beginning, which the extended kalman filter did not have, which could explain the worse than expected performance It is also surprising that the lower order GKHF actually had a better worst case MSE compared to the higher order GHKF. This could go to show that the distribution of the states is actually really far away from being a Gaussian, and using a Gaussian approximation might not yield a lot of benefits.
 
 $\pagebreak$
 
 # 3 Particle Filtering
 
-In Particle filtering, we are still trying to solve the same problem of estimating the state of the pendulum by assimilating data and forming a posterior, but here the big difference compared to the Gaussian Integration based Filters is that we do not assume that the filtering distribution is gaussian. Particle Filtering uses importance sampling to sample from an arbitrary distribution, which makes it quite powerful since it can approximate any distribution. The basic idea is to represent the filtering distribution as a set of particles, each with a weight, and then propagate these particles through the dynamics and measurement model to get the new state and weight of the particles. The weights are then normalized to get the posterior distribution. The particles are resampled based on their weights to avoid degeneracy, and the process is repeated for every new measurement. This sequential sampling of the posterior is why Particle Filtering is also called Sequential Importance Sampling.
+In Particle filtering, we are still trying to solve the same problem of estimating the state of the pendulum by assimilating data and forming a posterior, but here the difference compared to the Gaussian Integration based Filters is that we do not assume that the filtering distribution is gaussian. Particle Filtering uses importance sampling to sample from an arbitrary distribution, which makes it quite powerful since it can approximate any distribution.
+
+For effective state estimation, we ultimately want to be able to generate samples from the smoothing distribution $P(x^{0:k}|y^{0:k})$, the posterior distribution of the state given all the data so that we can approximate it via an empirical distribution with $N_p$ particles:
+
+$$
+P(x^{0:k}|y^{0:k}) \approx \sum_{i=1}^{N_p} w^k_i \delta_{x^k_i}(x^k) = \hat P(x^{0:k}|y^{0:k})
+$$
+
+Once we have this empirical distribution, we can marginalize it at any time step, and generate an estimator for the filtering distribution $P(x^k|y^{0:k})$ which is what we have been trying to approximate in this project.
+
+So, to get to the filtering distribution, we need a be able to start from an empirical distribution of the prior, and then recursively update the empirical distribution with the new data to ultimately get the empirical distribution of the smoothing distribution that can be marginalized. Hence, we start with:
+
+1. The initial empirical distribution consisting of weights and points.
+
+   - This is the prior distribution that can be sampled from to get the empirical distribution of $N_p$ equal weighted particles.
+
+2. A resampling threshold $N_r$ that we use to decide when to resample the particles, if the effective sample size of our estimator is too low, which would result in an inaccurate estimate.
+3. A proposal distribution that attempts to best propose a new state given the current state and new data.
+
+The challenge arrives when we have to propose new samples without any new data, in that case we seek a recursive distribution of $x^{0:k}$ given $y^{0:k-1}$, which does not include the new data $y^k$. This is where the dynamics model comes in, and we can use the dynamics model to propose new samples. This is also called the bootstrap proposal, and is the simplest proposal distribution that can be used in particle filtering. So in the case when there is no new data, the new weights become:
+
+$$
+\begin{aligned}
+w(x^{0:k}) &= \frac{P(x^{0:k} | y^{0:k-1})}{q(x^{0:k})} \\
+&= \frac{P(x^k, x^{0:k-1} | y^{0:k-1})}{q(x^k, x^{0:k-1})} \\
+&= \frac{P(x^k | x^{0:k-1}) P(x^{0:k-1} | y^{0:k-1})}{q(x^k | x^{0:k-1}) q(x^{0:k-1})} \\
+& \text{If we select $q$ such that it is the dynamics proposal, this becomes} \\
+&= \frac{P(x^k | x^{k-1}) P(x^{0:k-1} | y^{0:k-1})}{P(x^k | x^{k-1}) q(x^{0:k-1})} \\
+&\text{which simplifies to} \\
+&= \frac{P(x^{0:k-1} | y^{0:k-1})}{q(x^{0:k-1})} \\
+&= w(x^{0:k-1})
+\end{aligned}
+$$
+
+This means that we can simply use the same weights as in the previous step when we propose new samples in the absence of data. Now that we have all the building blocks, we can start with the algorithm for Particle Filtering.
+
+1.  Start with an initial empirical distribution of $N_p$ particles $x^0_i$ and weights $w^0_i$.
+    - This is the prior distribution of $x^0$ that we started with with equal weights = $\frac{1}{N_p}$.
+    - $x^k$ represents the set of all particles at time $k$.
+    - $x^k_i$ represents the $i^{th}$ particle at time $k$.
+2.  For each time step $k$:
+
+    1.  For each particle $i$:
+
+        1. If there is no new data
+           1. sample a new particle $x^k_i$ from the dynamics proposal.
+           2. Keep the weights the same $w^k_i = w^{k-1}_i$.
+        2. If there is new data
+
+           1. Sample a new particle $x^k_i$ from the proposal distribution $q(x^k|x^{0:k-1}_i)$
+           2. Compute the weight update of the particle $v^k_i$
+
+           - If there is new data, compute the weight update $v^k_i$ using importance sampling, with the bayes update rule and the probability of the new particle given the previous particle and data
+             - $v^k_i = \frac{P(y^k|x^k_i)P(x^k_i|x^{k-1}_i)}{q(x^k_i|x^{0:k-1}_i)}$
+             - In the code, this is done using log probabilities to avoid numerical issues.
+
+           3. Update the weight of the particle $w^k_i = w^{k-1}_i v^k_i$
+
+    2.  Normalize the weights $\bar w^k_i = \frac{w^k_i}{\sum_i^{N_p} w^k_i}$
+    3.  Compute the effective sample size $ESS = \frac{1}{\sum_i^{N_p} (\bar w^k_i)^2}$
+    4.  If $ESS < N_r$, resample the particles
+        1. Resample the particles from the empirical distribution $P(x^{0:k}|y^{0:k})$
+           - Assume that the current distribution is the empirical distribution of the smoothing distribution $\hat P(x^{0:k}|y^{0:k})$
+           - Sample $N_p$ particles from the empirical distribution with replacement
+        2. Set the weights of the resampled particles to be equal: $\bar w^k_i = \frac{1}{N_p}$
+
+The proposal for generating new samples and weights taking into account the new data is very important in determining the performance of the particle filter. In this project, I have implemented 2 proposals:
 
 ## Dynamics as the proposal
 
-TODO: explain
+This is the same as the case when there is no new data, and the proposal is the dynamics model. This is the simplest proposal that can be used in particle filtering, and is also called the bootstrap proposal. In this case, the proposal $q(x^k|x^{0:k-1}) = P(x^k|x^{k-1}) = P(x^k|x^{k-1})$. This propagates a particle with the stochastic dynamics of the system, and can lead to a lot of particle degeneracy if the prior is not accurate since the proposal is not based on the data.
+
+To sample from this proposal, we sample the same way we would sample from a multivariate gaussian with mean $\Phi(x^{k-1})$ and covariance $\bf{Q}$, and the logpdf will be evaluated the same way as for any other multivariate gaussian like all of the previous projects.
 
 ## EKF strategy for approximating the proposal
 
-TODO: explain
+The optimal proposal for importance sampling is one that would minimize the variance of the estimator. This proposal would be $q(x^k|x^{0:k-1}) = P(x^k|x^{k-1}, y^k)$. In our case, we cannot fully compute the optimal proposal, because it requires a full Bayesian update and computation of the marginal likelihood (evidence). However, it is possible to approximate it by linearizing the measurement model like we did in the Extended Kalman Filter. Hence, if our observation operator is $H^{\delta k}$ like in part 1.1, and the optimal proposal is
+
+$$
+\begin{aligned}
+P(x^k|x^{k-1}, y^k) &= \frac{P(y^k|x^k)P(x^k|x^{k-1})}{P(y^k|x^{k-1})} \\
+\text{where } & \\
+\text{Prior: } P(x^k|x^{k-1}) &= \mathcal{N}(x^k; \Phi(x^{k-1}), \bf{Q}) \\
+\text{Which gives us: } &
+\bar m^k = \Phi(x^{k-1}) \\
+\bar C^k &= \bf{Q} \\
+\mu &= h( \bar m^k) \\
+U &= \bar C^k (H^k)^T \\
+S &= H^k U + R \\
+m_k &= \bar m^k + U S^{-1} (y^k - \mu) \\
+C_k &= \bar C^k - U S^{-1} U^T \\
+\text{Then the proposal: } q(x^k|x^{0:k-1}) &= \mathcal{N}(x^k; m_k, C_k) \\
+\text{Marginal likelihood of the data: } P(y^k|x^k) &= \mathcal{N}(y^k; \mu, S) \\
+\text{Weight update: }v^k_i &= P(y^k|x^k_i) = \mathcal{N}(y^k; \mu, S) \\
+\end{aligned}
+$$
+
+Hence this way we can have an optimal proposal and a way to recursively update the weights by just sampling from and evaluating the PDF of gaussians.
 
 ## 3.1 Running the particle filters
 
@@ -471,12 +586,43 @@ We can see that here the particle filter tracks the true state for both the low 
 
 ### EKF strategy for approximating the proposal
 
-TODO: make this plot and fill this up
+The EKF Strategy was implemented as explained above, but did not produce workable results so there are no plots, However, I would expect it to work a lot better, with a lot less particle degenracy and resampling when the measurement noise is low, since it will take the data into account when proposing new samples. However, when the noise is ver high, the posterior might be close to the dynamics proposal.
+
+$\pagebreak$
 
 ## 3.2
 
-Here we create a reference simulation using the dynamics proposal for the 3 chosen combinations of $\delta$ and $R$ to compare the performance of the Particle Filter with the Gaussian Integration based Kalman Filters. The joint posterior of the states is drawn at t = [0, 1.25, 2.5, 3.75, 5] for the 3 cases, and the gaussian distribution approximated by EKF is overlaid on top as well to compare how good the Gaussian approximation is. I have used a million samples for each time step in the particle filter to get a good approximation of the posterior, but I have only plotted 10000 samples so that we can still see the contours of the non-gaussian and gaussian posterior clearly.
+Here we create a reference simulation using the dynamics proposal for the 3 chosen combinations of $\delta$ and $R$ to compare the performance of the Particle Filter with the Gaussian Integration based Kalman Filters. The joint posterior of the states is drawn at t = [0, 1.25, 2.5, 3.75, 5] for the 3 cases, and the gaussian distribution approximated by EKF is overlaid on top as well to compare how good the Gaussian approximation is. I have used a million samples for each time step in the particle filter to get a good approximation of the posterior, but I have only plotted 10000 samples so that we can still see the contours of the non-gaussian and gaussian posterior clearly. Here I wrap the angle when plotting the samples for the particle filter and in the dynamics proposal, because not doing it will cause the weights of the samples will get wrongly assigned to high values of the angle, which would lead to actually a worse visualization and estimate of the state.
 
-<!-- ![Joint Posterior for dynamics proposal with UKF approximation](figs/Posterior:%20PF%20with%20dynamics%20proposal.svg) -->
+![Joint Posterior for dynamics proposal with UKF approximation](figs/Posterior:%20PF%20with%20dynamics%20proposal.svg)
 
 We can see that as the noise increases, the posterior becomes more and more non-gaussian, and the Gaussian approximation by the UKF becomes worse and worse. In the presence of low noise, the state estimates are very close to each other, and will behave similarly as time progresses, retaining their gaussian shape from the gaussian prior pretty well. However, as we increase the measurement noise, the samples stray further away from the prior mean and start getting affected a lot by the nonlinear dynamics, which is why we see that the posterior propagates to become more and more non-gaussian. Therefore, the UKF approximation is really good when there is low noise, but is totally wrong when there is high noise, which is expected since the posterior is extremely non-gaussian. In the case of medium noise, we can see that the EKF approximation is not that bad, staying close to the mean and mostly maintaining the spread of the posterior. However, in some occasions like ($\delta$=40, R=0.1, t = 2.5) the covariance is clearly wrong since the gaussian is stretched in the opposite direction compared to the true posterior.
+
+$\pagebreak$
+
+## 3.3
+
+For this, I am computing the moments of the Particle filter with the dynamics proposal. These moments are then compared against the gaussian filters, and the squared difference is computed for each time step to give a high level idea of how far off the means and covariances are from the particle filter output.
+
+![Squared difference of moments between PF and Gaussian filters](figs/Comparison%20of%20moments%20between%20PF%20and%20KF.svg)
+
+We can see here that the Kalman Filter performs the worst overall, regularly spiking above the rest in terms of its errors, especially when the noise is high. It is also obvious that in the start of the simulation, the cvovariances of all the gaussian integration based methods have a large error that quickly goes down except when the noise is really high. The pattern in the highest noise case is also interesting, because it shows that when the pendulum is changing directions, there is a brief moment when the filters have a small error.
+
+The following table shows the overall summed errors for the 3 cases for the 4 filters. The errors are calculated as the sum of the squared differences of the means and covariances of the particle filter and the gaussian filters at each time step.
+
+| Filter | $\delta$=5 R=0.001 Mean | $\delta$=5 R=0.001 Covariance | $\delta$=40 R=0.1 Mean | $\delta$=40 R=0.1 Covariance | $\delta$=40 R=1 Mean | $\delta$=40 R=1 Covariance |
+| ------ | ----------------------- | ----------------------------- | ---------------------- | ---------------------------- | -------------------- | -------------------------- |
+| EKF    | 62.48                   | 9.78                          | 360.75                 | 392.26                       | 936.38               | 2665.59                    |
+| UKF    | 123.88                  | 81.97                         | 149.85                 | 319.52                       | 41.76                | 2524.49                    |
+| GHKF3  | 102.94                  | 80.44                         | 122.94                 | 283.13                       | 295.22               | 2827.35                    |
+| GHKF5  | 107.57                  | 81.72                         | 105.70                 | 300.04                       | 189.51               | 2746.43                    |
+
+When looking at the overall errors, it is clear the the Extended Kalman filter is the best when the noise is low, but UKF is the best when the noise is really high. When the noise is medium, the integration based filters seem to perform better then EKF, but all of them are around the same in terms of errors.
+
+## 3.4 Convergence
+
+Here I have plotted the overall mean squared error for the case with $\delta=40$ and $R=1$ here to show how the error converges over the number of samples. The error is calculated as the overall sum of the squared differences between various sample sizes with a sample size of 1000000. This is done for both mean and covariance, in a log plot.
+
+![Convergence of the mean and covariance of the particle filter with the dynamics proposal](figs/Convergence%20of%20PF%20with%20dynamics%20proposal.svg)
+
+We can see that the error converges linearly on the log plot, hence it actually converges exponentially. There also doesnt seem to be any slowdown in the convergence, which means if we were able to run the particle filter with a lot more samples, we would be able to get a much better estimate of the posterior.
