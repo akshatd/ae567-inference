@@ -124,9 +124,6 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
   [t_array, x_G] = ode45(@(t, x) dynamics(t, x, u, wParams), ...
     interval, x0_G);
 
-  % [t_arrayl, x_G_and_w_G] = ode45(@(t, x_G_and_w) coupled_gimbal_xw(t, x_G_and_w, u,wParams),...
-  %                         interval, x0_G_and_w0_G);
-
   % Store Iteration Data
   t = t + Ts;
   w_G = disturbance(t, wParams);
@@ -137,8 +134,8 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
   data.t(ii + 1, :) = t;
 
   % Update MPC States
-  x = x_G(end, :)'; % Need to switch to observation eventually
-  dx = x - x0_G; % Need to switch to observation eventually
+  x = x_G(end, :)'; % TODO: Need to switch to observation eventually
+  dx = x - x0_G; % TODO: Need to switch to observation eventually
   y_MPC = output(x, u_G, w_G);
   e = y_MPC - ref;
   x0_MPC = [dx; e; x; u];
@@ -162,47 +159,44 @@ plot_sys(data);
 
 %% Dynamics Functions
 % Nonlinear Dynamics Equations (Used for linearization)
-function state_dot = dynamics_w_dist(t, x_G, u, w)
-
+function state_dot = dynamics_w_dist(t, x, u, w)
   % unpack variables
   % states of coupled model, constraints enforced on these
-  state_coupled = x_G;
-  x_G1 = state_coupled(1); % eta
-  x_G2 = state_coupled(2); % eps
-  x_G3 = state_coupled(3); % Omega_OBz
-  x_G4 = state_coupled(4); % Omega_IOy
-  x_G5 = state_coupled(5); % z_OB
-  x_G6 = state_coupled(6); % z_IO
+  x_G1 = x(1); % eta
+  x_G2 = x(2); % eps
+  x_G3 = x(3); % Omega_OBz
+  x_G4 = x(4); % Omega_IOy
+  x_G5 = x(5); % z_OB
+  x_G6 = x(6); % z_IO
 
-  eta = state_coupled(1);
-  eps = state_coupled(2);
-  Omega_OBz = state_coupled(3);
-  Omega_IOy = state_coupled(4);
-  z_OB = state_coupled(5);
-  z_IO = state_coupled(6);
+  eta = x(1);
+  eps = x(2);
+  Omega_OBz = x(3);
+  Omega_IOy = x(4);
+  z_OB = x(5);
+  z_IO = x(6);
 
   % control of coupled model, constraints enforced on these
   u_G1 = u(1);
   u_G2 = u(2); % motor torque trasmitted to inner gimbal
 
   % disburbances of coupled model, constraints enforced on these
-  dist_coupled = w;
-  w_G1 = dist_coupled(1);
-  w_G2 = dist_coupled(2);
-  w_G3 = dist_coupled(3);
-  w_G4 = dist_coupled(4);
-  w_G5 = dist_coupled(5);
-  w_G6 = dist_coupled(6);
-  w_G7 = dist_coupled(7);
-  w_G8 = dist_coupled(8);
-  theta = dist_coupled(1);
-  phi = dist_coupled(2);
-  psi_dot = dist_coupled(3);
-  theta_dot = dist_coupled(4);
-  phi_dot = dist_coupled(5);
-  psi_ddot = dist_coupled(6);
-  theta_ddot = dist_coupled(7);
-  phi_ddot = dist_coupled(8);
+  w_G1 = w(1);
+  w_G2 = w(2);
+  w_G3 = w(3);
+  w_G4 = w(4);
+  w_G5 = w(5);
+  w_G6 = w(6);
+  w_G7 = w(7);
+  w_G8 = w(8);
+  theta = w(1);
+  phi = w(2);
+  psi_dot = w(3);
+  theta_dot = w(4);
+  phi_dot = w(5);
+  psi_ddot = w(6);
+  theta_ddot = w(7);
+  phi_ddot = w(8);
 
   % eqns 2.53, 2.54 pg. 35
   eta_dot = Omega_OBz;
@@ -229,7 +223,7 @@ function state_dot = dynamics_w_dist(t, x_G, u, w)
   % define angular accels of outer gimbal about its body frame axes
   % state_I = [eps; Omega_IOy; z_IO];
   % control_I = T_mI;
-  alphas = angular_accelerations(x_G, u, w);
+  alphas = angular_accelerations(x, u, w);
   alpha_O_ex = alphas(1);
   alpha_O_ey = alphas(2);
   alpha_dist_Ix = alphas(3);
@@ -291,48 +285,45 @@ function state_dot = dynamics_w_dist(t, x_G, u, w)
 end
 
 % Computes distrubances analytically (use for propagating dynamics)
-function state_dot = dynamics(t, x_G, u, distParams)
-
+function state_dot = dynamics(t, x, u, w_params)
   % unpack variables
   % states of coupled model, constraints enforced on these
-  state_coupled = x_G;
-  x_G1 = state_coupled(1); % eta
-  x_G2 = state_coupled(2); % eps
-  x_G3 = state_coupled(3); % Omega_OBz
-  x_G4 = state_coupled(4); % Omega_IOy
-  x_G5 = state_coupled(5); % z_OB
-  x_G6 = state_coupled(6); % z_IO
+  x_G1 = x(1); % eta
+  x_G2 = x(2); % eps
+  x_G3 = x(3); % Omega_OBz
+  x_G4 = x(4); % Omega_IOy
+  x_G5 = x(5); % z_OB
+  x_G6 = x(6); % z_IO
 
-  eta = state_coupled(1);
-  eps = state_coupled(2);
-  Omega_OBz = state_coupled(3);
-  Omega_IOy = state_coupled(4);
-  z_OB = state_coupled(5);
-  z_IO = state_coupled(6);
+  eta = x(1);
+  eps = x(2);
+  Omega_OBz = x(3);
+  Omega_IOy = x(4);
+  z_OB = x(5);
+  z_IO = x(6);
 
   % control of coupled model, constraints enforced on these
-  u_G = u;
-  u_G1 = u_G(1);
-  u_G2 = u_G(2); % motor torque trasmitted to inner gimbal
+  u_G1 = u(1);
+  u_G2 = u(2); % motor torque trasmitted to inner gimbal
 
   % disburbances of coupled model, constraints enforced on these
-  disturbances = disturbance(t, distParams);
-  w_G1 = disturbances(1);
-  w_G2 = disturbances(2);
-  w_G3 = disturbances(3);
-  w_G4 = disturbances(4);
-  w_G5 = disturbances(5);
-  w_G6 = disturbances(6);
-  w_G7 = disturbances(7);
-  w_G8 = disturbances(8);
-  theta = disturbances(1);
-  phi = disturbances(2);
-  psi_dot = disturbances(3);
-  theta_dot = disturbances(4);
-  phi_dot = disturbances(5);
-  psi_ddot = disturbances(6);
-  theta_ddot = disturbances(7);
-  phi_ddot = disturbances(8);
+  w = disturbance(t, w_params);
+  w_G1 = w(1);
+  w_G2 = w(2);
+  w_G3 = w(3);
+  w_G4 = w(4);
+  w_G5 = w(5);
+  w_G6 = w(6);
+  w_G7 = w(7);
+  w_G8 = w(8);
+  theta = w(1);
+  phi = w(2);
+  psi_dot = w(3);
+  theta_dot = w(4);
+  phi_dot = w(5);
+  psi_ddot = w(6);
+  theta_ddot = w(7);
+  phi_ddot = w(8);
 
   % eqns 2.53, 2.54 pg. 35
   eta_dot = Omega_OBz;
@@ -359,7 +350,7 @@ function state_dot = dynamics(t, x_G, u, distParams)
   % define angular accels of outer gimbal about its body frame axes
   % state_I = [eps; Omega_IOy; z_IO];
   % control_I = T_mI;
-  alphas = angular_accelerations(x_G, u, disturbances);
+  alphas = angular_accelerations(x, u, w);
   alpha_O_ex = alphas(1);
   alpha_O_ey = alphas(2);
   alpha_dist_Ix = alphas(3);
