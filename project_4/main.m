@@ -4,11 +4,14 @@ clc; clear; close all;
 %% Constants
 p.I_I_yy = 2.8813; % pg.23
 p.sigma_0IO = 0.1; % friction between inner and outer gimbals(lookup table)
-noise_proc = 0.000001; % noise in z
-noise_meas = 0.000001; % noise in y
+% noise_proc = 0.000001; % noise in z
+noise_proc = 0.0001; % noise in z
+% noise_meas = 0.000001; % noise in y
+noise_meas = 0.0001; % noise in y
 
 %% Set Simulation Parameters
 nx_coupled = 6;
+ny_coupled = 4;
 nu_coupled = 2;
 nd_coupled = 8;
 
@@ -26,7 +29,7 @@ syms theta phi psi_dot theta_dot phi_dot psi_ddot theta_ddot phi_ddot
 w_sym = [theta; phi; psi_dot; theta_dot; phi_dot; psi_ddot; ...
            theta_ddot; phi_ddot];
 
-% Set up symbolic problem
+%% Set up symbolic problem
 f = dynamics_w_dist(0, x_sym, u_sym, w_sym);
 H = output(x_sym, u_sym, w_sym);
 A = jacobian(f, x_sym);
@@ -35,7 +38,7 @@ Bw = jacobian(f, w_sym);
 C = jacobian(H, x_sym);
 Cw = jacobian(H, w_sym);
 
-% Solver linearization point ALL ZEROS
+%% Solver linearization point ALL ZEROS
 x0 = ones(nx_coupled, 1) * 1e-5;
 u0 = ones(nu_coupled, 1) * 1e-5;
 w0 = ones(nd_coupled, 1) * 1e-5;
@@ -46,13 +49,13 @@ Cc = double(subs(C, [x_sym; u_sym; w_sym], [x0; u0; w0]));
 Cwc = double(subs(Cw, [x_sym; u_sym; w_sym], [x0; u0; w0]));
 Dc = zeros(size(Cc, 1), size(Bc, 2));
 
-% Check Observability and Controllability of matrix
+%% Check Observability and Controllability of matrix
 fprintf("Linarized Continuous Model has controllability rank %.0f\n", ...
   rank(ctrb(Ac, Bc)))
 fprintf("Linarized Continuous Model has observability rank %.0f\n", ...
   rank(obsv(Ac, Cc)))
 
-% Define discrete system
+%% Define discrete system
 % Need to figure out how to add the disturbances probably will be fixed by
 % modifying them as states or inputs
 sysd = c2d(ss(Ac, Bc, Cc, Dc), Ts);
@@ -61,18 +64,13 @@ Bd = sysd.B;
 Cd = sysd.C;
 Dd = sysd.D;
 
-% Check Observability and Controllability of matrix
+%% Check Observability and Controllability of matrix
 fprintf("Linearized Discrete Model has controllability rank %.0f\n", ...
   rank(ctrb(Ad, Bd)))
 fprintf("Linearized Discrete Model has observability rank %.0f\n", ...
   rank(obsv(Ad, Cd)))
 
-t = 0;
-% Initalize continous dynamic states
-x0_G = zeros(nx_coupled, 1);
-u0_G = zeros(nu_coupled, 1);
-
-% High frequency test case
+%% High frequency disturbance
 wParams.at = 0.03;
 wParams.ft = 1.3;
 wParams.aph = 0.11;
@@ -81,21 +79,32 @@ wParams.aps = 0.013;
 wParams.fps = 1.15;
 w0_G = disturbance(0, wParams);
 
+%% Initalize continous dynamic states
+x0_G = zeros(nx_coupled, 1);
+u0_G = zeros(nu_coupled, 1);
+y0_G = output(x0_G, u0_G, w0_G); % Sensor Measurements
+
 N = 20; % MPC horizon
 ref = [1; 0.25; 0; 0]; %zeros(4,1); % Set reference
 
-% ---------------- MPC Formulation 4 --------------------
-% Obtain the QP matrix for formulation 4
+%% ---------------- MPC Formulation --------------------
+% Obtain the QP matrix for formulation
 [H, L, G, W, T, IMPC] = formulate4(Ad, Bd, Cd, N);
 sW = size(W);
 % Initalize MPC controller
 lam0 = ones(sW(1), 1);
 
-y0_MPC = output(x0_G, u0_G, w0_G); % Sensor Measurements
-x0_MPC = [zeros(nx_coupled, 1); y0_MPC - ref; x0_G; u0_G]; % Extended States
+x0_MPC = [zeros(nx_coupled, 1); y0_G - ref; x0_G; u0_G]; % Extended States
 % -------------------------------------------------
 
-% Initalize arrays to store results
+%% Initialize Extended Kalman Filter
+cov_process = eye(nx_coupled) * noise_proc;
+cov_measure = eye(ny_coupled) * noise_meas;
+ekf = EKF(x0_G, eye(nx_coupled), @dynamics_w_dist, cov_process, @output, cov_measure, Ts);
+xhat = x0_G;
+xhat_prev = x0_G;
+
+%% Initalize arrays to store results
 data = [];
 data.x(1, :) = x0_G;
 data.u(1, :) = u0_G;
@@ -133,16 +142,32 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
   data.w(ii + 1, :) = w_G';
   data.t(ii + 1, :) = t;
 
-  % Update MPC States
+  % determine current state and output
   x = x_G(end, :)'; % TODO: Need to switch to observation eventually
+  % y = output(x, u_G, w_G);
+  y = output(x, u_G, w_G) + noise_meas * randn(ny_coupled, 1);
+
+  % linearize and discretize the system at current timestep
+  Ack = double(subs(A, [x_sym; u_sym; w_sym], [x; u_G; w_G']));
+  Bck = double(subs(B, [x_sym; u_sym; w_sym], [x; u_G; w_G']));
+  Cck = double(subs(C, [x_sym; u_sym; w_sym], [x; u_G; w_G']));
+  Dck = zeros(size(Cck, 1), size(Bck, 2));
+  [Ak, Bk, Ck, Dk] = c2dm(Ack, Bck, Cck, Dck, Ts);
+  % run EKF
+  ekf.filter(u_G, w_G, Ak, Ck, y);
+  xhat = ekf.prior_mean;
+
+  % Update MPC States
   dx = x - x0_G; % TODO: Need to switch to observation eventually
-  y_MPC = output(x, u_G, w_G);
-  e = y_MPC - ref;
+  % dx = xhat - xhat_prev; % TODO: Need to switch to observation eventually
+  e = y - ref;
   x0_MPC = [dx; e; x; u];
+  % x0_MPC = [dx; e; xhat; u];
 
   % Update States and Controls
   x0_G = x_G(end, :)';
   u0_G = u_G;
+  xhat_prev = xhat;
 
   % Print updates on simulation
   if mod(ii, 20) == 0
@@ -152,9 +177,9 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
 
 end
 
-% Plot Simulation Results
+%% Plot Simulation Results
 % close all
-plot_sys(data);
+plot_sys(data, ekf.store_mean, ekf.store_std);
 % analysis_MPC(data);
 
 %% Dynamics Functions

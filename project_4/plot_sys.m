@@ -1,15 +1,16 @@
 %% Plotting function
-function plot_sys(data)
-  plot_states(data.x, data.t)
+function plot_sys(data, est_mean, est_cov)
+  plot_states(data.x, data.t, est_mean, est_cov)
   plot_control(data.u, data.t)
   plot_dist(data.w, data.t)
 end
 
-function plot_states(states, t)
+function plot_states(states, t, est_mean, est_cov)
   figure()
   subplot(3, 2, 1);
   plot(t, states(:, 1), 'b', 'LineWidth', 2, DisplayName = "x_{G1}");
   hold on
+  plot(t, est_mean(:, 1), '--b', 'LineWidth', 2, DisplayName = "x_{G1} est");
   yline(-pi, '--r', 'LineWidth', 2, DisplayName = "lower limit");
   yline(pi, '--r', 'LineWidth', 2, DisplayName = "upper limit");
   xlabel('Time (s)');
@@ -21,6 +22,7 @@ function plot_states(states, t)
   subplot(3, 2, 2);
   plot(t, states(:, 2), 'b', 'LineWidth', 2, DisplayName = "x_{G2}");
   hold on
+  plot(t, est_mean(:, 2), '--b', 'LineWidth', 2, DisplayName = "x_{G2} est");
   yline(-pi / 9, '--r', 'LineWidth', 2, DisplayName = "lower limit");
   yline(4 * pi / 9, '--r', 'LineWidth', 2, DisplayName = "upper limit");
   xlabel('Time (s)');
@@ -32,6 +34,7 @@ function plot_states(states, t)
   subplot(3, 2, 3);
   plot(t, states(:, 3), 'b', 'LineWidth', 2, DisplayName = "x_{G3}");
   hold on
+  plot(t, est_mean(:, 3), '--b', 'LineWidth', 2, DisplayName = "x_{G3} est");
   yline(-20, '--r', 'LineWidth', 2, DisplayName = "lower limit");
   yline(20, '--r', 'LineWidth', 2, DisplayName = "upper limit");
   xlabel('Time (s)');
@@ -42,6 +45,7 @@ function plot_states(states, t)
   subplot(3, 2, 4);
   plot(t, states(:, 4), 'b', 'LineWidth', 2, DisplayName = "x_{G4}");
   hold on
+  plot(t, est_mean(:, 4), '--b', 'LineWidth', 2, DisplayName = "x_{G4} est");
   yline(-12, '--r', 'LineWidth', 2, DisplayName = "lower limit");
   yline(12, '--r', 'LineWidth', 2, DisplayName = "upper limit");
   xlabel('Time (s)');
@@ -52,6 +56,7 @@ function plot_states(states, t)
   subplot(3, 2, 5);
   plot(t, states(:, 5), 'b', 'LineWidth', 2, DisplayName = "x_{G5}");
   hold on
+  plot(t, est_mean(:, 5), '--b', 'LineWidth', 2, DisplayName = "x_{G5} est");
   yline(-10, '--r', 'LineWidth', 2, DisplayName = "lower limit");
   yline(10, '--r', 'LineWidth', 2, DisplayName = "upper limit");
   xlabel('Time (s)');
@@ -62,6 +67,7 @@ function plot_states(states, t)
   subplot(3, 2, 6);
   plot(t, states(:, 6), 'b', 'LineWidth', 2, DisplayName = "x_{G6}");
   hold on
+  plot(t, est_mean(:, 6), '--b', 'LineWidth', 2, DisplayName = "x_{G6} est");
   yline(-10, '--r', 'LineWidth', 2, DisplayName = "lower limit");
   yline(10, '--r', 'LineWidth', 2, DisplayName = "upper limit");
   xlabel('Time (s)');
