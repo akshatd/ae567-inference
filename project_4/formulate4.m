@@ -9,9 +9,9 @@ function [H, L, G, W, T, IMPC] = formulate4(A, B, C, N)
   %   Outputs: matrices defining the QP problem
   %% Define Augmented Problem
   % Define dimensions for problem
-  nx = 6; % Number of states
-  nu = 2; % Number of inputs
-  ny = 4; % Number of measurements
+  nx = size(A, 1); % Number of states
+  nu = size(B, 2); % Number of inputs
+  ny = size(C, 1); % Number of measurements
   ne = ny; % Number of error (equivalent to measurments)
 
   % Format augmented A, B, C, D arrays according to Incremental model (form4)
@@ -40,10 +40,12 @@ function [H, L, G, W, T, IMPC] = formulate4(A, B, C, N)
   A_ang = A(1:2, 1:2);
   B_ang = B(1:2, :);
   C_ang = C(1:2, 1:2);
-  Aterm = [A_ang, zeros(nx - 4, ne - 2); ...
-                   C_ang * A_ang, eye(ne - 2)];
+  % Aterm = [A_ang, zeros(nx - 4, ne - 2); ...
+  %            C_ang * A_ang, eye(ne - 2)];
+  Aterm = [A_ang, zeros(2, 2); C_ang * A_ang, eye(2)];
   Bterm = [B_ang; C_ang * B_ang];
-  Qterm = blkdiag(zeros(nx - 4), Qe(1:2, 1:2));
+  % Qterm = blkdiag(zeros(nx - 4), Qe(1:2, 1:2));
+  Qterm = blkdiag(zeros(2), Qe(1:2, 1:2));
   % Aterm       = [A,  zeros(nx,ne);...
   %                C*A, eye(ne)];
   % Bterm       = [B; C*B];

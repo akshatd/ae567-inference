@@ -10,11 +10,6 @@ noise_proc = 0.001; % noise in z
 noise_meas = 0.001; % noise in y
 
 %% Set Simulation Parameters
-nx_coupled = 6;
-ny_coupled = 4;
-nu_coupled = 2;
-nd_coupled = 8;
-
 Nsim = 120;
 t = 0;
 Ts = 0.05; % sec
@@ -37,6 +32,11 @@ B = jacobian(f, u_sym);
 Bw = jacobian(f, w_sym);
 C = jacobian(H, x_sym);
 Cw = jacobian(H, w_sym);
+
+nx_coupled = size(A, 1);
+nu_coupled = size(B, 2);
+ny_coupled = size(C, 1);
+nd_coupled = size(Bw, 2);
 
 %% Solver linearization point ALL ZEROS
 x0 = ones(nx_coupled, 1) * 1e-5;
@@ -134,7 +134,6 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
 
   options = odeset('RelTol', 1e-6, 'AbsTol', 1e-6);
   u = u_G; % control is fixed over interval
-  % u = min(max(u_G, uMin), uMax); % control is fixed over interval
   % w = w_G; % disturbance static over interval
 
   % Simulate Dynamics
