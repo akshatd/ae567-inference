@@ -15,7 +15,7 @@ ny_coupled = 4;
 nu_coupled = 2;
 nd_coupled = 8;
 
-Nsim = 100;
+Nsim = 120;
 t = 0;
 Ts = 0.05; % sec
 h = Ts / 10; % hold each command for 100th of a second
@@ -100,11 +100,14 @@ x0_MPC = [zeros(nx_coupled, 1); y0_G - ref; x0_G; u0_G]; % Extended States
 % -------------------------------------------------
 
 %% Initialize Extended Kalman Filter
+% prior_mean = 0.1 * ones(size(x0_G));
+prior_mean = x0;
+prior_mean(1:2) = [0.5, 0.2];
 cov_process = eye(nx_coupled) * noise_proc;
 cov_measure = eye(ny_coupled) * noise_meas;
-ekf = EKF(x0_G, eye(nx_coupled), @dynamics_w_dist, cov_process, @output, cov_measure, Ts, A, B, C, x_sym, u_sym, w_sym);
-xhat = x0_G;
-xhat_prev = x0_G;
+ekf = EKF(prior_mean, eye(nx_coupled), @dynamics_w_dist, cov_process, @output, cov_measure, Ts, A, B, C, x_sym, u_sym, w_sym);
+xhat = prior_mean;
+xhat_prev = prior_mean;
 
 %% Initalize arrays to store results
 data = [];
@@ -113,6 +116,8 @@ data.u(1, :) = u0_G;
 data.w(1, :) = w0_G;
 data.t(1, :) = 0;
 
+uMax = [203; 35.3];
+uMin = -uMax;
 % r = zeros(nx_coupled,1);
 for ii = 1:1:Nsim %simulate over XXXXX seconds
 
@@ -129,6 +134,7 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
 
   options = odeset('RelTol', 1e-6, 'AbsTol', 1e-6);
   u = u_G; % control is fixed over interval
+  % u = min(max(u_G, uMin), uMax); % control is fixed over interval
   % w = w_G; % disturbance static over interval
 
   % Simulate Dynamics
@@ -153,18 +159,18 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
   ekf.filter(u_G, w_G, y);
   xhat = ekf.prior_mean;
 
-  % if ii > Nsim/3 && ii < 2*Nsim/3
-  %     ref = -ref;
-  % elseif ii > 2*Nsim/3
-  %     ref = -ref;
-  % end
+  if ii == 40
+    ref = zeros(size(ref)); % reset
+  elseif ii == 80
+    ref = [1; 0.25; 0; 0]; % try again
+  end
 
   % Update MPC States
-  dx = x - x0_G; % TODO: Need to switch to observation eventually
-  % dx = xhat - xhat_prev; % TODO: Need to switch to observation eventually
+  % dx = x - x0_G; % TODO: Need to switch to observation eventually
+  dx = xhat - xhat_prev;
   e = y - ref;
-  x0_MPC = [dx; e; x; u];
-  % x0_MPC = [dx; e; xhat; u];
+  % x0_MPC = [dx; e; x; u];
+  x0_MPC = [dx; e; xhat; u];
 
   % Update States and Controls
   x0_G = x_G(end, :)';
@@ -180,7 +186,7 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
 end
 
 %% Plot Simulation Results
-% close all
+close all
 plot_sys(data, ekf.store_mean, ekf.store_std);
 % analysis_MPC(data);
 
