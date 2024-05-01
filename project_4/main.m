@@ -5,9 +5,9 @@ clc; clear; close all;
 p.I_I_yy = 2.8813; % pg.23
 p.sigma_0IO = 0.1; % friction between inner and outer gimbals(lookup table)
 % noise_proc = 0.000001; % noise in z
-noise_proc = 0.0001; % noise in z
 % noise_meas = 0.000001; % noise in y
-noise_meas = 0.0001; % noise in y
+noise_proc = 0.001; % noise in z
+noise_meas = 0.001; % noise in y
 
 %% Set Simulation Parameters
 nx_coupled = 6;
@@ -17,7 +17,7 @@ nd_coupled = 8;
 
 Nsim = 100;
 t = 0;
-Ts = 0.1; % sec
+Ts = 0.05; % sec
 h = Ts / 10; % hold each command for 100th of a second
 
 %% Define Continuous System (Linearization)
@@ -80,8 +80,10 @@ wParams.fps = 1.15;
 w0_G = disturbance(0, wParams);
 
 %% Initalize continous dynamic states
-x0_G = zeros(nx_coupled, 1);
-u0_G = zeros(nu_coupled, 1);
+% x0_G = zeros(nx_coupled, 1);
+% u0_G = zeros(nu_coupled, 1);
+x0_G = x0;
+u0_G = u0;
 y0_G = output(x0_G, u0_G, w0_G); % Sensor Measurements
 
 N = 20; % MPC horizon
@@ -100,7 +102,7 @@ x0_MPC = [zeros(nx_coupled, 1); y0_G - ref; x0_G; u0_G]; % Extended States
 %% Initialize Extended Kalman Filter
 cov_process = eye(nx_coupled) * noise_proc;
 cov_measure = eye(ny_coupled) * noise_meas;
-ekf = EKF(x0_G, eye(nx_coupled), @dynamics_w_dist, cov_process, @output, cov_measure, Ts);
+ekf = EKF(x0_G, eye(nx_coupled), @dynamics_w_dist, cov_process, @output, cov_measure, Ts, A, B, C, x_sym, u_sym, w_sym);
 xhat = x0_G;
 xhat_prev = x0_G;
 
@@ -147,15 +149,15 @@ for ii = 1:1:Nsim %simulate over XXXXX seconds
   % y = output(x, u_G, w_G);
   y = output(x, u_G, w_G) + noise_meas * randn(ny_coupled, 1);
 
-  % linearize and discretize the system at current timestep
-  Ack = double(subs(A, [x_sym; u_sym; w_sym], [x; u_G; w_G']));
-  Bck = double(subs(B, [x_sym; u_sym; w_sym], [x; u_G; w_G']));
-  Cck = double(subs(C, [x_sym; u_sym; w_sym], [x; u_G; w_G']));
-  Dck = zeros(size(Cck, 1), size(Bck, 2));
-  [Ak, Bk, Ck, Dk] = c2dm(Ack, Bck, Cck, Dck, Ts);
   % run EKF
-  ekf.filter(u_G, w_G, Ak, Ck, y);
+  ekf.filter(u_G, w_G, y);
   xhat = ekf.prior_mean;
+
+  % if ii > Nsim/3 && ii < 2*Nsim/3
+  %     ref = -ref;
+  % elseif ii > 2*Nsim/3
+  %     ref = -ref;
+  % end
 
   % Update MPC States
   dx = x - x0_G; % TODO: Need to switch to observation eventually
